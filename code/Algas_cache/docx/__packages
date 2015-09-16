@@ -1,0 +1,12 @@
+base
+knitcitations
+dplyr
+coda
+boot
+R2WinBUGS
+tidyr
+ggplot2
+reshape
+lattice
+Rcpp
+unmarked

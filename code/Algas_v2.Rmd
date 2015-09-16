@@ -1,0 +1,306 @@
+---
+title: "Diversidad de Algas"
+author: "Nancy, Limberth, Jorge, Mireia, Diego"
+date: "Friday, Aug 14, 2015"
+output: word_document
+bibliography: C:\Users\Diego\Documents\CodigoR\Nancy\code\bibliography.bib
+---
+
+
+```{r setup, include=FALSE}
+# cache all... if problem... delete cache folder
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+
+
+#Diversidad de Algas en PS
+
+
+
+```{r packages,cache=TRUE,warning=FALSE,echo=FALSE,error=FALSE,message=FALSE}
+require(knitcitations)
+require(dplyr)
+library(lubridate)
+# source("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\code\\MultiSpeciesSiteOcc.R")
+algadata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Alga_full2.csv")
+source("C:/Users/Diego/Documents/CodigoR/ULEAM/Infor_Caract/code/MultiSpeciesSiteOcc.R")
+
+# Use coberturas to make presence absence
+conteoalga<-ceiling (algadata[,c(10,12,14,16,18,20,22,24,26)])  
+conteoalga[conteoalga > 0] <- 1 # convierte los numeros >0 en uno
+conteoalga_2<-cbind(algadata[,c(1:8)],conteoalga)
+conteoalga_2$yr<-year(dmy(conteoalga_2$fecha))
+
+
+
+#group per mes 
+
+  mat1<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Asparagopsis.armata = sum(cobertura.Asparagopsis.armata, na.rm=TRUE))
+
+
+  mat2<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Chaetomorpha.aerea = sum(cobertura.Chaetomorpha.aerea, na.rm=TRUE))
+
+
+  mat3<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Cladophora.prolifera = sum(cobertura.Cladophora.prolifera, na.rm=TRUE))
+
+
+  mat4<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(corallina.spp = sum(cobertura.Coralli.spp, na.rm=TRUE))
+
+
+  mat5<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Dictyota.dichotoma = sum(cobertura.Dictyota.dichotom, na.rm=TRUE))
+
+
+  mat6<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Lobophora.variegata = sum(cobertura.L.variegata, na.rm=TRUE))
+
+
+  mat7<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Polysiphonia.spp = sum(cobertura.Polysiphonia.spp, na.rm=TRUE))
+
+  mat8<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Sargassum.spp = sum(cobertura.Sargassum.spp, na.rm=TRUE))
+
+  mat9<- conteoalga_2 %>%
+                  group_by(Sitio, yr, mes, transecto) %>%
+                  summarise(Ulva.spp = sum(cobertura.Ulva.spp., na.rm=TRUE))
+
+
+fullmat.by.site<-cbind(mat1,mat2[5],mat3[5],mat4[5],mat5[5],mat6[5],mat7[5],mat8[5],mat9[5])
+# at the end is counting in how many plots is present by transect
+
+```
+
+
+## Distribucion posterior de la riqueza de especies
+
+Riqueza de especies y acumulación de algas, modelando la ocurrencia y la detectabilidad simultaneamente. Los datos se agruparon por transecto contando la aparición el los cuadrantes. Este análisis sigue el método de [@Dorazio2006]. Este método es conocido como "detection-based hierarchical model for estimating species diversity" [@Iknayan2014]. Posterior computed in 17.4905170679092 minutes.
+
+
+
+```{r acumul, eval=FALSE,cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7}
+
+ip.mat<-dplyr::filter(fullmat.by.site, Sitio == "IP")
+ip.mat<-ip.mat[,5:dim(ip.mat)[2]]
+
+X1 = as.matrix(t(ip.mat)) # col.per.sp por dias y row.per.sp por sitios (camaras)
+ nrepls = 2 
+ especies = MultiSpeciesSiteOcc(nrepls, X1)
+ 
+ # summary(especies$fit$sims.matrix)
+ 
+ alpha.post = especies$fit$sims.matrix[,"alpha"]
+ sigmaU.post = especies$fit$sims.matrix[,"sigma.u"]
+ N.post = especies$fit$sims.matrix[,"N"]
+ 
+ nsites = 15 
+ cum_sp<-CumNumSpeciesPresent(nsites, alpha.post, sigmaU.post, N.post)
+
+#histogram of posteriors
+hist(especies$fit$sims.matrix[,"N"], xlab="Number of algae species", ylab="Relative frecuency", main="")
+abline(v=mean(especies$fit$sims.matrix[,"N"]),col="blue", lty = 2) # mean
+abline(v=median(especies$fit$sims.matrix[,"N"]),col="red", lty = 3) # median
+
+
+```
+Distribución de posteriores del método jerárquico para estimar la diversidad. En rojo se muestra la mediana y en azul la media. Nueve es el número de especies de algas observado en los datos. Sin embargo la mediana es 11, sugiriendo que en el muestreo no estamos detectando dos especies.
+
+
+# Metodo tradicional (paquete vegan)
+
+Fisher's log-series fitted to abundance per site [@FisherEtal43]: In this method the expected number of species is f with n individuals is :
+
+
+$$\widehat{f} =  \frac{\alpha x^{n}} n$$
+
+
+
+
+```{r, spabund,cache=TRUE,warning=FALSE,echo=FALSE,error=FALSE,message=FALSE,results='asis',fig.height=9,fig.width=7}
+
+library(vegan)
+
+ip.mat<-dplyr::filter(fullmat.by.site, Sitio == "IP")
+ip.mat2<-apply(ip.mat[,5:dim(ip.mat)[2]], 2, sum)
+
+la.mat<-dplyr::filter(fullmat.by.site, Sitio == "LA")
+la.mat2<-apply(la.mat[,5:dim(la.mat)[2]], 2, sum)
+
+ps.mat<-dplyr::filter(fullmat.by.site, Sitio == "PS")
+ps.mat2<-apply(ps.mat[,5:dim(ps.mat)[2]], 2, sum)
+
+qng.mat<-dplyr::filter(fullmat.by.site, Sitio == "QNG")
+qng.mat2<-apply(qng.mat[,5:dim(qng.mat)[2]], 2, sum)
+
+u.mat<-dplyr::filter(fullmat.by.site, Sitio == "Ureles")
+u.mat2<-apply(u.mat[,5:dim(u.mat)[2]], 2, sum)
+
+
+fish.ip <- fisherfit(ip.mat2)
+fish.la <- fisherfit(la.mat2)
+fish.ps <- fisherfit(ps.mat2)
+fish.qng <- fisherfit(qng.mat2)
+fish.u <- fisherfit(u.mat2)
+
+
+par(mfrow=c(3,2)) #figures arranged in 3 rows and 2 columns
+plot(fish.ip, main="IP")
+plot(fish.la, main="LA")
+plot(fish.ps, main="PS")
+plot(fish.qng, main="QNG")
+plot(fish.u, main="Ureles")
+
+# dev.off()
+
+
+```
+Se observa que pocas especies dominan la comunidad de alggas en la mayoria de los sitios. Pej. en el sitio QNG una sola especie ocurrio 60 veces y las demas especies no estan presentes.
+
+
+Species accumulation models study the accumulation of species when the number of sites increases. 
+There are several alternative methods, including accumulating sites in the order they happen to be, and repeated accumulation in random order and rarefaction. Rarefaction curves often are seen as an objective
+solution for comparing species richness with diffent sample sizes [@Ugland2003].
+
+
+```{r, spacumula,cache=TRUE,warning=FALSE,echo=FALSE,error=FALSE,message=FALSE,fig.height=9,fig.width=7 }
+
+ip.mat3<-ip.mat[,5:dim(ip.mat)[2]]
+la.mat3<-la.mat[,5:dim(la.mat)[2]]
+ps.mat3<-ps.mat[,5:dim(ps.mat)[2]]
+qng.mat3<-qng.mat[,5:dim(qng.mat)[2]]
+u.mat3<-u.mat[,5:dim(u.mat)[2]]
+
+
+site1 <- specaccum(ip.mat3, method = "rarefaction")
+site2 <- specaccum(la.mat3,  method = "rarefaction")
+site3 <- specaccum(ps.mat3,  method = "rarefaction")
+site4 <- specaccum(qng.mat3,  method = "rarefaction")
+site5 <- specaccum(u.mat3,  method = "rarefaction")
+
+
+par(mfrow=c(3,2)) #figures arranged in 3 rows and 2 columns
+# plot(fish.ip, )
+plot(site1, main="IP", ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+plot(site2, main="LA", ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+plot(site3, main="PS", ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+plot(site4, main="QNG", ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+plot(site5, main="Ureles", ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+
+
+
+```
+QNG no tiene curva, pues solo hay una especie que ocurrio 60 veces.
+
+
+#Algae EXPLORATION
+
+
+## Relación entre especies de algas y variables
+
+
+```{r, reshapedata,cache=TRUE,warning=FALSE,echo=FALSE,error=FALSE,message=FALSE,results='asis'}
+
+
+
+library(tidyr)
+
+# algadata<-algadata[,c(-9:-16)] #### elimina las algas cero
+just_cover<-algadata[,c(-9,-11,-13,-15,-17,-19,-21,-23,-25)]
+just_biomasa<-algadata[,c(-10,-12,-14,-16,-18,-20,-22,-24,-26)]
+algaexpanded_cover<-gather(just_cover, "transecto", "cuadrante", c(9:17))
+colnames(algaexpanded_cover)[10] <- "cobertura"
+algaexpanded_biomasa<-gather(just_biomasa, "transecto", "cuadrante", c(9:17))
+colnames(algaexpanded_biomasa)[10] <- "biomasa"
+# algaexpanded_biomasa[10] <-as.numeric(algaexpanded_biomasa[10])
+
+
+alga_expanded_full<- cbind(algaexpanded_cover,algaexpanded_biomasa[10]) 
+alga_expanded_full$especie <- rep(NA,times = dim(algaexpanded_cover)[1])
+# alga_expanded_full$especie <- as.factor(sub("cobertura.", "", as.character(algaexpanded_cover$variable)) )
+alga_expanded_full$especie <- sub("cobertura.", "", as.character(algaexpanded_cover[,9]))
+
+# fix date
+
+alga_expanded_full$mes<-month(alga_expanded_full$fecha, label = TRUE, abbr = TRUE)
+alga_expanded_full$yr<-year(as.Date (alga_expanded_full$fecha, "%d-%m-%y"))  
+  
+library(ggplot2)
+
+
+
+                             
+
+```
+
+
+
+
+###Algas-Full dataset
+
+```{r plots, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7,autodep=TRUE}
+
+
+p1 <- ggplot(alga_expanded_full, aes(factor(especie), cobertura))
+p1 + geom_boxplot() + geom_jitter()
+################################### 
+
+p2 <- ggplot(alga_expanded_full, aes(factor(especie), biomasa))
+p2 + geom_boxplot() + geom_jitter() +  scale_y_log10() + ylab("Log(biomasa)")
+
+#######################################
+p3 <- qplot(cobertura, IR, data = alga_expanded_full)
+p3 + stat_smooth(method="lm", se=TRUE)
+
+#######################################
+p4 <- qplot(cobertura, temp, data = alga_expanded_full)
+p4 + stat_smooth(method="lm", se=TRUE)
+
+
+#######################################
+p5 <- qplot(mes, biomasa, data = alga_expanded_full)
+p5 + geom_boxplot() + geom_jitter() + scale_y_log10() + ylab("Log(biomasa)") + facet_grid(~yr)
+
+#######################################
+p5 + geom_boxplot() + geom_jitter() + scale_y_log10() + ylab("Log(biomasa)") + facet_grid(Sitio ~ yr) 
+
+p1 + geom_boxplot() + geom_jitter()  + facet_grid(Sitio ~ .) 
+
+```
+
+###Algas-Por especie
+
+```{r plots_especie, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7}
+
+p3 + stat_smooth(method="lm", se=TRUE) + facet_grid(~especie)
+p4 + stat_smooth(method="lm", se=TRUE) + facet_grid(~especie)
+p5 + geom_boxplot() + geom_jitter() + scale_y_log10() + ylab("Log(biomasa)") + 
+  facet_grid(~especie)
+
+
+
+```
+
+
+
+
+
+---
+
+#References
+
+
+
+

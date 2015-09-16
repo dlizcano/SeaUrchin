@@ -1,0 +1,12 @@
+base
+knitcitations
+dplyr
+lubridate
+coda
+boot
+R2WinBUGS
+permute
+lattice
+vegan
+tidyr
+ggplot2

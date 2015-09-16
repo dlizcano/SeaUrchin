@@ -1,0 +1,390 @@
+---
+title: "Diversidad de Algas y abundancia de Erizos"
+author: "Nancy, Limberth, Mireia, Diego"
+date: "Monday, May 25, 2015"
+output: word_document
+bibliography: C:\Users\Diego\Documents\CodigoR\Nancy\bibliography.bib
+---
+
+
+```{r setup, include=FALSE}
+# cache all... if problem... delete cache folder
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+
+
+#Diversidad de Algas en PS
+## Distribucion posterior de la riqueza de especies
+
+
+```{r packages,cache=TRUE,warning=FALSE,echo=FALSE,error=FALSE,message=FALSE}
+require(knitcitations)
+require(dplyr)
+# source("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\code\\MultiSpeciesSiteOcc.R")
+algadata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Alga_PS.csv")
+source("C:/Users/Diego/Documents/CodigoR/ULEAM/Infor_Caract/code/MultiSpeciesSiteOcc.R")
+
+conteoalga<-ceiling (algadata[,c(10,12,14,16,18,20,22,24,26)])  
+conteoalga[conteoalga > 0] <- 1 # convierte los numeros >0 en uno
+conteoalga_2<-cbind(algadata[,c(1:8)],conteoalga)
+
+
+#group per mes 
+
+  mat1<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Asparagopsis.armata = sum(cobertura.Asparagopsis.armata, na.rm=TRUE))
+
+
+  mat2<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Chaetomorpha.aerea = sum(cobertura.Chaetomorpha.aerea, na.rm=TRUE))
+
+
+  mat3<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Cladophora.prolifera = sum(cobertura.Cladophora.prolifera, na.rm=TRUE))
+
+
+  mat4<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(corallina.spp = sum(cobertura.corallina.spp, na.rm=TRUE))
+
+
+  mat5<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Dictyota.dichotoma = sum(cobertura.Dictyota.dichotoma, na.rm=TRUE))
+
+
+  mat6<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Lobophora.variegata = sum(cobertura.Lobophora.variegata, na.rm=TRUE))
+
+
+  mat7<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Polysiphonia.spp = sum(cobertura.Polysiphonia.spp, na.rm=TRUE))
+
+  mat8<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Sargassum.spp = sum(cobertura.Sargassum.spp, na.rm=TRUE))
+
+  mat9<- conteoalga_2 %>%
+                  group_by(mes, transecto) %>%
+                  summarise(Ulva.spp = sum(cobertura.Ulva.spp., na.rm=TRUE))
+
+
+fullmat<-cbind(mat1,mat2[3],mat3[3],mat4[3],mat5[3],mat6[3],mat7[3],mat8[3],mat9[3])
+
+
+```
+
+
+
+
+Riqueza de especies y acumulación de algas, modelando la ocurrencia y la detectabilidad simultaneamente. Los datos se agruparon por transecto contando la aparición el los cuadrantes. Este análisis sigue el método de @Dorazio2006. Este método es conocido como "detection-based hierarchical model for estimating species diversity" [@Iknayan2014]. Posterior computed in 17.4905170679092 minutes.
+
+
+
+```{r acumul, eval=TRUE,cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7}
+
+X1 = as.matrix(t(fullmat)[c(-1,-2),]) # col.per.sp por dias y row.per.sp por sitios (camaras)
+ nrepls = 3 
+ especies = MultiSpeciesSiteOcc(nrepls, X1)
+ 
+ # summary(especies$fit$sims.matrix)
+ 
+ alpha.post = especies$fit$sims.matrix[,"alpha"]
+ sigmaU.post = especies$fit$sims.matrix[,"sigma.u"]
+ N.post = especies$fit$sims.matrix[,"N"]
+ 
+ nsites = 60 
+ cum_sp<-CumNumSpeciesPresent(nsites, alpha.post, sigmaU.post, N.post)
+
+#histogram of posteriors
+hist(especies$fit$sims.matrix[,"N"], xlab="Number of algae species", ylab="Relative frecuency", main="")
+abline(v=mean(especies$fit$sims.matrix[,"N"]),col="blue", lty = 2) # mean
+abline(v=median(especies$fit$sims.matrix[,"N"]),col="red", lty = 3) # median
+
+
+```
+Distribución de posteriores del método jerárquico para estimar la diversidad. En rojo se muestra la mediana y en azul la media. Nueve es el número de especies de algas observado en los datos. Sin embargo la mediana es 11, sugiriendo que en el muestreo no estamos detectando dos especies.
+
+
+
+#PS EXPLORATION
+
+
+## Relación entre especies de algas y variables
+
+
+```{r, reshapedata,cache=TRUE,warning=FALSE,echo=FALSE,error=FALSE,message=FALSE,results='asis'}
+library(tidyr)
+
+algadata<-algadata[,c(-9:-16)] #### elimina las algas cero
+just_cover<-algadata[,c(-9,-11,-13,-15,-17)]
+just_biomasa<-algadata[,c(-10,-12,-14,-16,-18)]
+algaexpanded_cover<-gather(just_cover, "transecto", "cuadrante", c(9:13))
+colnames(algaexpanded_cover)[10] <- "cobertura"
+algaexpanded_biomasa<-gather(just_biomasa, "transecto", "cuadrante", c(9:13))
+colnames(algaexpanded_biomasa)[10] <- "biomasa"
+# algaexpanded_biomasa[10] <-as.numeric(algaexpanded_biomasa[10])
+
+
+alga_expanded_full<- cbind(algaexpanded_cover,algaexpanded_biomasa[10]) 
+alga_expanded_full$especie <- rep(NA,times = 900)
+# alga_expanded_full$especie <- as.factor(sub("cobertura.", "", as.character(algaexpanded_cover$variable)) )
+alga_expanded_full$especie <- sub("cobertura.", "", as.character(algaexpanded_cover[,9]))
+
+library(ggplot2)
+
+
+
+
+
+
+                             
+                             
+
+```
+
+
+
+
+###Algas-Full dataset
+
+```{r plots, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7,autodep=TRUE}
+
+
+
+
+
+p1 <- ggplot(alga_expanded_full, aes(factor(especie), cobertura))
+p1 + geom_boxplot() + geom_jitter()
+################################### 
+
+p2 <- ggplot(alga_expanded_full, aes(factor(especie), biomasa))
+p2 + geom_boxplot() + geom_jitter()
+
+#######################################
+p3 <- qplot(cobertura, IR, data = alga_expanded_full)
+p3 + stat_smooth(method="lm", se=TRUE)
+
+#######################################
+p4 <- qplot(cobertura, temp, data = alga_expanded_full)
+p4 + stat_smooth(method="lm", se=TRUE)
+
+
+#######################################
+p5 <- qplot(fecha, biomasa, data = alga_expanded_full)
+p5 + geom_boxplot() + geom_jitter() + scale_y_log10() + ylab("Log(biomasa)")
+
+
+
+```
+
+###Algas-Por especie
+
+```{r plots_especie, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7}
+
+p3 + stat_smooth(method="lm", se=TRUE) + facet_grid(~especie)
+p4 + stat_smooth(method="lm", se=TRUE) + facet_grid(~especie)
+p5 + geom_boxplot() + geom_jitter() + scale_y_log10() + ylab("Log(biomasa)") + 
+  facet_grid(~especie)
+
+
+
+```
+
+
+## Relación entre las dos especies de erizos
+
+
+```{r erizoeplore, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7}
+erizodata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Erizo_PS.csv")
+
+print(cor.test(erizodata$conteo.D..mexicanum, erizodata$conteo.E..thouarsii))
+
+p6 <- qplot(conteo.E..thouarsii, conteo.D..mexicanum,  data = erizodata)
+p6 + stat_smooth(method="lm", se=TRUE) # + geom_jitter() 
+
+
+
+```
+
+Curiosamente el valor de la correlación es muy bajo y la probabilidad indica que esta es no es significativa. Pero la relación es positiva entre los conteos de las dos especies.
+
+
+
+#Modelo de la abundancia de los erizos
+##Algebra del modelo
+
+The N-mixture model or Poisson-Binomial mixture model [@Royle2004]. In this model, all that is required to estimate detection probability and abundance is counts of unmarked individuals that are replicated in two dimensions: there must be a number of sites and there must be a number of replicate observations (i.e., counts) for at least some of the sites. 
+The N-mixture model is a hierarchical extension of the Poisson GLM. We use the Poisson GLM as the base model for N but we regard N as latent variables (i.e., as unobserved or only partly observed). We augment the Poisson GLM with a model that describes how the observations Cij are related to the latent variable Ni. The model is also called a Poisson/binomial mixture model.
+
+
+  1. State process:   $$N_{i} \sim  Poisson (\lambda )$$	
+  
+  
+  2. Observation process:	 $$C_{ij} \sim Binnomial (N_{i} , p_{ij})$$
+  
+
+Here, $N_{i}$ is the latent abundance state at site i (i = 1…M) and $\lambda$  is the expected abundance, i.e., the mean abundance over all sites. $C_{ij}$  is the count at site i during survey j (j = 1…T) and $p_{ij})$ is the (per-individual) detection probability at site i during survey j.
+
+```{r erizo, results='asis',cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7,message=FALSE}
+
+library(dplyr)
+library(tidyr)
+
+erizodata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Erizo_PS.csv")
+erizodata2<-subset(erizodata, transecto <=15)
+##### select just months 8 to 12 to match alga sampling
+erizodata<-filter(erizodata2, fecha>=3 ) #x[(x > 0) & (x < 1)]
+erizodata2<-filter(erizodata, fecha<=6 ) #x[(x > 0) & (x < 1)] 
+ 
+erizo_sp1<-erizodata[,-4]
+erizo_sp2<-erizodata[,-5]
+
+# erizoexpanded<-gather(erizodata, "transecto", "fecha", c(4:5))
+erizoexpanded_sp1<-spread(erizo_sp1, "fecha","conteo.E..thouarsii")
+erizoexpanded_sp2<-spread(erizo_sp2, "fecha","conteo.D..mexicanum")
+
+erizo2_occu<-erizoexpanded_sp2[,3:6] # fix acording to month number
+erizo2_occu[erizo2_occu >0] <-1 # convierte los numeros >0 en uno
+
+######################### Select just 3 first months
+algadata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Alga_PS.csv")
+algadata2<-filter(algadata, mes>=8)
+algadata3<-filter(algadata2, mes<=11)
+
+covL<-data.frame(cbind(algadata3$sitio,algadata3$mes,algadata3$plot,algadata3$cobertura.Lobophora.variegata))
+colnames(covL)<-c("sitio", "mes","plot","biomLobo")
+covLobo<-spread(covL, "mes","biomLobo")
+# biomaLobo[biomaLobo ==NA] <-0 # convierte los numeros >0 en uno
+
+covP<-data.frame(cbind(algadata3$sitio,algadata3$mes,algadata3$plot,algadata3$cobertura.Polysiphonia.spp))
+colnames(covP)<-c("sitio", "mes","plot","biomLobo")
+covPoly<-spread(covP, "mes","biomLobo")
+# biomaLobo[biomaLobo ==NA] <-0 # convierte los numeros >0 en uno
+
+visitMat <- matrix(as.character(1:4), 15, 4, byrow=TRUE)
+
+
+library(unmarked)
+umf <- unmarkedFramePCount(y=erizoexpanded_sp2[,3:6], # chane acording to month number
+                           siteCovs= data.frame(
+                             covLobo= apply(covLobo[,3:6],1,FUN = sum),
+                             covPoly=apply(covPoly[,3:6],1,FUN = sum)), 
+                           obsCovs = list(obsLobo = covLobo[3:6],
+                                          obsPoly = covPoly[3:6],
+                                          visit=visitMat))
+
+summary(umf)
+
+# Detection covariates follow first tilde, then come abundance covariates
+fm.nmix1 <- pcount(~1 ~1, data=umf, control=list(trace=TRUE, REPORT=2), K=300)
+fm.nmix2 <- pcount(~1 ~covLobo, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+fm.nmix3 <- pcount(~1 ~covPoly, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+fm.nmix4 <- pcount(~obsLobo ~1, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+fm.nmix5 <- pcount(~obsPoly ~1, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+
+fm.nmix2nb <- pcount(~1 ~covLobo, data=umf, mixture="NB", control=list(trace=TRUE, REPORT=2),K=300)
+
+fm.nmix2zip <- pcount(~1 ~covLobo, data=umf, mixture="ZIP", control=list(trace=TRUE, REPORT=2),K=300)
+
+fm.nmix6 <- pcount(~visit ~1, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+
+
+models <- fitList(
+      'p(.)lambda(.)' = fm.nmix1,
+      'p(.)lambda(covLobo)' = fm.nmix2,
+      'p(.)lambda(covPoly)' = fm.nmix3,
+      'p(obsLobo)lambda(.)' = fm.nmix4,
+      'p(obsPoly)lambda(.)' = fm.nmix5,
+      'p(.)lambda(covLobo)nb' = fm.nmix2nb,
+      'p(.)lambda(covLobo)zip' = fm.nmix2zip,
+      'p(visit)lambda(.)' = fm.nmix6)
+    
+    ms <- modSel(models)
+
+modelos<-ms@Full
+
+beta1 <- coef(fm.nmix3) 
+plot(function(x) exp(beta1[1] + beta1[2]*x), 0, 15, # no covariates
+     xlab="otra_sp", ylab="Expected Abundance")
+
+
+newdat <- data.frame(covPoly=c(0:100))
+pred<-predict(fm.nmix3, type="state", newdata=newdat, appendData = T)
+
+plot(pred$covPoly,pred$Predicted)
+
+
+models<-as.data.frame(cbind(modelos[[1]],modelos[[20]],modelos[[18]],modelos[[21]]))
+
+colnames(models)<-c("model","AIC","nPars","delta")
+
+print(knitr::kable(models))
+
+
+plogis(coef(fm.nmix3, type="det")) # Should be close to p
+backTransform(fm.nmix3, type="det")
+
+plogis(coef(fm.nmix3, type="state"))
+
+
+
+# Empirical Bayes estimation of random effects
+(fm1re <- ranef(fm.nmix1))
+plot(fm1re, subset=site \%in\% 1:25, xlim=c(-1,40))
+sum(bup(fm1re))         # Estimated population size
+# Naive population size
+Nnaive<-sum(apply(erizoexpanded_sp1[,3:6],2,sum))
+
+
+
+## GoF analysis
+## define a fit statistic
+freeTuke <- function(fm) {
+  observed <- getY(fm@data)
+  expected <- fitted(fm)
+  sum((sqrt(observed) - sqrt(expected))^2)
+}
+
+pb.bestfit <- parboot(fm.nmix3, freeTuke, nsim=300, report=1)
+plot(pb.bestfit)
+
+
+# Function returning three fit-statistics.
+fitstats <- function(fm) {
+    observed <- getY(fm@data)
+    expected <- fitted(fm)
+    resids <- residuals(fm)
+    sse <- sum(resids^2)
+    chisq <- sum((observed - expected)^2 / expected)
+    freeTuke <- sum((sqrt(observed) - sqrt(expected))^2)
+    out <- c(SSE=sse, Chisq=chisq, freemanTukey=freeTuke)
+    return(out)
+    }
+
+(pb <- parboot(fm.nmix3, fitstats, nsim=25, report=1))
+plot(pb, main="")
+
+
+
+```
+
+La abundancia de la especie 1 de erizo puede ser explicada por la presencia de la otra especie.... Los modelos negative bionomial y zero inflated model no funcionaron muy bien.
+
+
+
+
+
+---
+
+#References
+
+
+
+

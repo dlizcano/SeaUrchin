@@ -1,0 +1,25 @@
+{
+    "contents" : "",
+    "created" : 1433228062868.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "164AC4F5",
+    "lastKnownWriteTime" : 7011605692497750387,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "24h6d82z6e",
+        "caption" : "erizo_sp1",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=erizo_sp1&cache_key=24h6d82z6e",
+        "displayedObservations" : "64",
+        "environment" : "",
+        "object" : "erizo_sp1",
+        "totalObservations" : "64",
+        "variables" : "10"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "type" : "r_dataframe"
+}

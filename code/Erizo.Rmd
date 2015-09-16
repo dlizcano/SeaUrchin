@@ -1,0 +1,225 @@
+---
+title: "Untitled"
+author: "Diego J. Lizcano"
+date: "August 16, 2015"
+output: word_document
+bibliography: C:\Users\Diego\Documents\CodigoR\Nancy\code\bibliography.bib
+csl: ecology.csl
+---
+
+
+```{r setup, include=FALSE}
+# cache all... if problem... delete cache folder
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+
+# Relación entre las dos especies de erizos
+
+## Conteos totales sin discriminar sitio.
+
+```{r erizoeplore, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=7,fig.width=7}
+erizodata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Erizo_full.csv")
+library(ggplot2)
+
+print(cor.test(erizodata$E_thouarsii, erizodata$D_mexicanum ))
+
+p6 <- qplot(D_mexicanum, E_thouarsii, data = erizodata)
+p6 + stat_smooth() 
+
+
+```
+
+El valor de la correlación es muy bajo y la probabilidad indica que esta es no es significativa. 
+
+##Discriminando por el sitio
+```{r erizoeploresite, cache=TRUE,warning=FALSE,echo=FALSE,fig.height=7,fig.width=7}
+p6 + stat_smooth() + facet_grid(Sitio ~ .) #+ geom_jitter()
+
+```
+Pareciera haber algo en QNG y la Isla de la Plata?
+
+
+
+#Modelo de la abundancia de los erizos
+##Algebra del modelo
+
+Abundance estimation in ecology is usually accomplished by capture-recapture, removal, or distance sampling methods. These may be hard to implement at large spatial scales. In contrast, binomial mixture models enable abundance estimation without individual identification, based simply on temporally and spatially replicated counts [@Kery2005].
+
+
+
+The N-mixture model or Poisson-Binomial mixture model [@Royle2004]. In this model, all that is required to estimate detection probability and abundance is counts of unmarked individuals that are replicated in two dimensions: there must be a number of sites and there must be a number of replicate observations (i.e., counts) for at least some of the sites. 
+The N-mixture model is a hierarchical extension of the Poisson GLM. We use the Poisson GLM as the base model for N but we regard N as latent variables (i.e., as unobserved or only partly observed). We augment the Poisson GLM with a model that describes how the observations Cij are related to the latent variable Ni. The model is also called a Poisson/binomial mixture model.
+
+Abundance was modeled as a random effect with a Poisson or negative binomial distribution, with mean affected by forest cover, elevation, and route length. Detectability was a logit-linear function of survey date, survey date-by-elevation, and sampling effort (time per transect unit)
+
+binomial mixture models are an important new approach for estimating abundance corrected for detectability when only repeated-count data are available. 
+
+  1. State process:   $$N_{i} \sim  Poisson (\lambda )$$	
+  
+  
+  2. Observation process:	 $$C_{ij} \sim Binnomial (N_{i} , p_{ij})$$
+  
+
+Here, $N_{i}$ is the latent abundance state at site i (i = 1…M) and $\lambda$  is the expected abundance, i.e., the mean abundance over all sites. $C_{ij}$  is the count at site i during survey j (j = 1…T) and $p_{ij})$ is the (per-individual) detection probability at site i during survey j.
+
+```{r erizo,eval=FALSE, results='asis',cache=TRUE,warning=FALSE,echo=FALSE,fig.height=4,fig.width=7,message=FALSE}
+
+library(dplyr)
+library(tidyr)
+
+erizodata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Erizo_full.csv")
+erizodata2<-subset(erizodata, Sitio == "I_Plata")
+##### select just months 8 to 12 to match alga sampling
+# erizodata<-filter(erizodata2, fecha>=3 ) #x[(x > 0) & (x < 1)]
+# erizodata2<-filter(erizodata, fecha<=6 ) #x[(x > 0) & (x < 1)] 
+ 
+erizo_sp1<-erizodata[,-8]
+erizo_sp2<-erizodata[,-9]
+
+# erizoexpanded<-gather(erizodata, "transecto", "fecha", c(4:5))
+erizoexpanded_sp1<-spread(erizo_sp1, "fecha","E_thouarsii")
+erizoexpanded_sp2<-spread(erizo_sp2, "fecha","D_mexicanum")
+
+erizo2_occu<-erizoexpanded_sp2[,3:6] # fix acording to month number
+erizo2_occu[erizo2_occu >0] <-1 # convierte los numeros >0 en uno
+
+######################### Select just 3 first months
+algadata<-read.csv("C:\\Users\\Diego\\Documents\\CodigoR\\Nancy\\data\\Alga_PS.csv")
+algadata2<-filter(algadata, mes>=8)
+algadata3<-filter(algadata2, mes<=11)
+
+covL<-data.frame(cbind(algadata3$sitio,algadata3$mes,algadata3$plot,algadata3$cobertura.Lobophora.variegata))
+colnames(covL)<-c("sitio", "mes","plot","biomLobo")
+covLobo<-spread(covL, "mes","biomLobo")
+# biomaLobo[biomaLobo ==NA] <-0 # convierte los numeros >0 en uno
+
+covP<-data.frame(cbind(algadata3$sitio,algadata3$mes,algadata3$plot,algadata3$cobertura.Polysiphonia.spp))
+colnames(covP)<-c("sitio", "mes","plot","biomLobo")
+covPoly<-spread(covP, "mes","biomLobo")
+# biomaLobo[biomaLobo ==NA] <-0 # convierte los numeros >0 en uno
+
+visitMat <- matrix(as.character(1:4), 15, 4, byrow=TRUE)
+
+
+library(unmarked)
+umf <- unmarkedFramePCount(y=erizoexpanded_sp2[,3:6], # chane acording to month number
+                           siteCovs= data.frame(
+                             covLobo= apply(covLobo[,3:6],1,FUN = sum),
+                             covPoly=apply(covPoly[,3:6],1,FUN = sum)), 
+                           obsCovs = list(obsLobo = covLobo[3:6],
+                                          obsPoly = covPoly[3:6],
+                                          visit=visitMat))
+
+summary(umf)
+
+# Here's an easy way to standardize covariates after making the UMF
+obsCovs(umf) <- scale(obsCovs(umf))
+summary(umf)
+
+# Detection covariates follow first tilde, then come abundance covariates
+fm.nmix1 <- pcount(~1 ~1, data=umf, control=list(trace=TRUE, REPORT=2), K=300)
+fm.nmix2 <- pcount(~1 ~covLobo, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+fm.nmix3 <- pcount(~1 ~covPoly, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+fm.nmix4 <- pcount(~obsLobo ~1, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+fm.nmix5 <- pcount(~obsPoly ~1, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+
+fm.nmix2nb <- pcount(~1 ~covLobo, data=umf, mixture="NB", control=list(trace=TRUE, REPORT=2),K=300)
+
+fm.nmix2zip <- pcount(~1 ~covLobo, data=umf, mixture="ZIP", control=list(trace=TRUE, REPORT=2),K=300)
+
+fm.nmix6 <- pcount(~visit ~1, data=umf, control=list(trace=TRUE, REPORT=2),K=300)
+
+
+models <- fitList(
+      'p(.)lambda(.)' = fm.nmix1,
+      'p(.)lambda(covLobo)' = fm.nmix2,
+      'p(.)lambda(covPoly)' = fm.nmix3,
+      'p(obsLobo)lambda(.)' = fm.nmix4,
+      'p(obsPoly)lambda(.)' = fm.nmix5,
+      'p(.)lambda(covLobo)nb' = fm.nmix2nb,
+      'p(.)lambda(covLobo)zip' = fm.nmix2zip,
+      'p(visit)lambda(.)' = fm.nmix6)
+    
+    ms <- modSel(models)
+
+modelos<-ms@Full
+
+beta1 <- coef(fm.nmix3) 
+plot(function(x) exp(beta1[1] + beta1[2]*x), 0, 15, # no covariates
+     xlab="otra_sp", ylab="Expected Abundance")
+
+
+newdat <- data.frame(covPoly=c(0:100))
+pred<-predict(fm.nmix3, type="state", newdata=newdat, appendData = T)
+
+plot(pred$covPoly,pred$Predicted)
+
+
+models<-as.data.frame(cbind(modelos[[1]],modelos[[20]],modelos[[18]],modelos[[21]]))
+
+colnames(models)<-c("model","AIC","nPars","delta")
+
+print(knitr::kable(models))
+
+
+plogis(coef(fm.nmix3, type="det")) # Should be close to p
+backTransform(fm.nmix3, type="det")
+
+plogis(coef(fm.nmix3, type="state"))
+
+
+
+# Empirical Bayes estimation of random effects
+(fm1re <- ranef(fm.nmix1))
+plot(fm1re, subset=site \%in\% 1:25, xlim=c(-1,40))
+sum(bup(fm1re))         # Estimated population size
+# Naive population size
+Nnaive<-sum(apply(erizoexpanded_sp1[,3:6],2,sum))
+
+
+
+## GoF analysis
+## define a fit statistic
+freeTuke <- function(fm) {
+  observed <- getY(fm@data)
+  expected <- fitted(fm)
+  sum((sqrt(observed) - sqrt(expected))^2)
+}
+
+pb.bestfit <- parboot(fm.nmix3, freeTuke, nsim=300, report=1)
+plot(pb.bestfit)
+
+
+# Function returning three fit-statistics.
+fitstats <- function(fm) {
+    observed <- getY(fm@data)
+    expected <- fitted(fm)
+    resids <- residuals(fm)
+    sse <- sum(resids^2)
+    chisq <- sum((observed - expected)^2 / expected)
+    freeTuke <- sum((sqrt(observed) - sqrt(expected))^2)
+    out <- c(SSE=sse, Chisq=chisq, freemanTukey=freeTuke)
+    return(out)
+    }
+
+(pb <- parboot(fm.nmix3, fitstats, nsim=25, report=1))
+plot(pb, main="")
+
+
+
+```
+
+La abundancia de la especie 1 de erizo puede ser explicada por la presencia de la otra especie.... Los modelos negative bionomial y zero inflated model no funcionaron muy bien.
+
+
+
+---
+
+#References
+
+
+
+
+
+

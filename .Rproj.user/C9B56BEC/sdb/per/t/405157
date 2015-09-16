@@ -1,0 +1,18 @@
+{
+    "contents" : "\n\n\n# Simulate data\nset.seed(35)\nnSites <- 16\nnVisits <- 4\nx <- rnorm(nSites)               # a covariate\nbeta0 <- 0\nbeta1 <- 1\nlambda <- exp(beta0 + beta1*x)   # expected counts at each site\nN <- rpois(nSites, lambda)       # latent abundance\ny <- matrix(NA, nSites, nVisits)\np <- c(0.3, 0.6, 0.8, 0.5)            # detection prob for each visit\nfor(j in 1:nVisits) {\n  y[,j] <- rbinom(nSites, N, p[j])\n}\n\n# Organize data\nvisitMat <- matrix(as.character(1:nVisits), nSites, nVisits, byrow=TRUE)\n\numf <- unmarkedFramePCount(y=y, siteCovs=data.frame(x=x),\n                           obsCovs=list(visit=visitMat))\nsummary(umf)\n\n# Fit a model\nfm1 <- pcount(~visit-1 ~ x, umf, K=50)\nfm1\n\nplogis(coef(fm1, type=\"det\")) # Should be close to p\n\n\n# Empirical Bayes estimation of random effects\n(fm1re <- ranef(fm1))\nplot(fm1re, subset=site \\%in\\% 1:25, xlim=c(-1,40))\nsum(bup(fm1re))         # Estimated population size\nsum(N)                  # Actual population size\n",
+    "created" : 1433088114133.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3388790819",
+    "id" : "405157",
+    "lastKnownWriteTime" : 1433238882,
+    "path" : "~/CodigoR/Nancy/code/Pcount_simulation.R",
+    "project_path" : "code/Pcount_simulation.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "type" : "r_source"
+}

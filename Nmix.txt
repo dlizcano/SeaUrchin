@@ -1,0 +1,35 @@
+
+model {
+
+# Priors
+alpha0 ~ dunif(-10, 10)
+alpha1 ~ dunif(-10, 10)
+p ~ dunif(0, 1)
+
+# Likelihood
+# Ecological model for true abundance
+for (i in 1:R){
+   N[i] ~ dpois(lambda[i])
+   log(lambda[i]) <- alpha0 + alpha1 * vegHt[i]
+
+   # Observation model for replicated counts
+   for (j in 1:T){
+      C[i,j] ~ dbin(p, N[i])
+
+         # Assess model fit using Chi-squared discrepancy
+         # Compute fit statistic E for observed data
+         eval[i,j] <- p * N[i]   	# Expected values
+         E[i,j] <- pow((C[i,j] - eval[i,j]),2) / (eval[i,j] + 0.5)
+         # Generate replicate data and compute fit stats for them
+         C.new[i,j] ~ dbin(p, N[i])
+         E.new[i,j] <- pow((C.new[i,j] - eval[i,j]),2) / (eval[i,j] + 0.5)
+   }
+}
+
+# Derived quantities
+lp <- logit(p)           # logit-scale detection
+totalN <- sum(N[])       # Total abundance over all R sites
+fit <- sum(E[,])         # Fit stats actual data set
+fit.new <- sum(E.new[,]) # Fit stats ?ideal? data set
+}
+

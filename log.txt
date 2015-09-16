@@ -1,0 +1,50 @@
+display(log)
+check(C:/Users/Diego/Documents/CodigoR/Nancy/Nmix.txt)
+model is syntactically correct
+data(C:/Users/Diego/Documents/CodigoR/Nancy/data.txt)
+data loaded
+compile(3)
+model compiled
+inits(1,C:/Users/Diego/Documents/CodigoR/Nancy/inits1.txt)
+this chain contains uninitialized variables
+inits(2,C:/Users/Diego/Documents/CodigoR/Nancy/inits2.txt)
+this chain contains uninitialized variables
+inits(3,C:/Users/Diego/Documents/CodigoR/Nancy/inits3.txt)
+this chain contains uninitialized variables
+gen.inits()
+initial values generated, model initialized
+thin.updater(2)
+update(500)
+set(alpha0)
+set(alpha1)
+set(p)
+set(lp)
+set(totalN)
+set(fit)
+set(fit.new)
+set(deviance)
+dic.set()
+command #Bugs:dic.set cannot be executed (is greyed out)
+update(4500)
+coda(*,C:/Users/Diego/Documents/CodigoR/Nancy/coda)
+stats(*)
+
+Node statistics
+	 node	 mean	 sd	 MC error	2.5%	median	97.5%	start	sample
+	alpha0	-2.799	0.2894	0.01279	-3.371	-2.797	-2.229	501	13500
+	alpha1	1.94	0.1163	0.005143	1.713	1.939	2.169	501	13500
+	deviance	669.2	18.44	0.6675	636.4	667.8	708.2	501	13500
+	fit	79.77	5.44	0.1839	70.71	79.17	91.92	501	13500
+	fit.new	75.69	9.784	0.3314	58.38	74.96	96.02	501	13500
+	lp	0.4344	0.1685	0.007054	0.08927	0.4409	0.7468	501	13500
+	p	0.6062	0.04011	0.001685	0.5223	0.6085	0.6785	501	13500
+	totalN	466.3	30.08	1.324	419.0	462.0	536.0	501	13500
+dic.stats()
+
+DIC
+history(*,C:/Users/Diego/Documents/CodigoR/Nancy/history.odc)
+
+History
+
+save(C:/Users/Diego/Documents/CodigoR/Nancy/log.odc)
+save(C:/Users/Diego/Documents/CodigoR/Nancy/log.txt)

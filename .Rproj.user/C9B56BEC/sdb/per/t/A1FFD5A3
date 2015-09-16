@@ -1,0 +1,25 @@
+{
+    "contents" : "",
+    "created" : 1442342353098.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "A1FFD5A3",
+    "lastKnownWriteTime" : 7011605692497750387,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "37cf81gvl4",
+        "caption" : "erizodata",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=erizodata&cache_key=37cf81gvl4",
+        "displayedObservations" : 714,
+        "environment" : "",
+        "object" : "erizodata",
+        "totalObservations" : 714,
+        "variables" : 11
+    },
+    "relative_order" : 10,
+    "source_on_save" : false,
+    "type" : "r_dataframe"
+}
